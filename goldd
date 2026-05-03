@@ -1,0 +1,573 @@
+
+import json
+
+# Convert to JSON
+btc_json = json.dumps(btc_data)
+gold_json = json.dumps(gold_data)
+btc_signals_json = json.dumps(btc_signals)
+gold_signals_json = json.dumps(gold_signals)
+
+# Create PWA HTML - simplified and robust version
+pwa_html = '''<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0e1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CryptoGold">
+    <meta name="description" content="تحليل فني للبيتكوين والذهب - فريم 4 ساعات">
+    <title>CryptoGold Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * { font-family: 'Cairo', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: #0a0e1a; color: #e2e8f0; overscroll-behavior-y: none; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+        }
+        .signal-buy { color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+        .signal-sell { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
+        .signal-neutral { color: #f59e0b; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .signal-strong-buy { color: #10b981; background: rgba(16, 185, 129, 0.25); border: 2px solid #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+        .signal-strong-sell { color: #ef4444; background: rgba(239, 68, 68, 0.25); border: 2px solid #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+        .tab-active {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            color: white;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+        .chart-container { position: relative; height: 300px; }
+        .chart-container-small { position: relative; height: 150px; }
+        .metric-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+        .metric-card:active { transform: scale(0.98); }
+        .pulse-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.5); }
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .refresh-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            transition: all 0.3s ease;
+        }
+        .refresh-btn:active { transform: scale(0.95); }
+        .install-banner {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            animation: slideDown 0.5s ease-out;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @media (max-width: 640px) {
+            .chart-container { height: 250px; }
+            .chart-container-small { height: 130px; }
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding: 8px 0;
+            z-index: 100;
+            display: none;
+        }
+        @media (max-width: 640px) {
+            .bottom-nav { display: flex; }
+            main { padding-bottom: 80px; }
+        }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            color: #64748b;
+            transition: all 0.2s;
+            background: none;
+            border: none;
+        }
+        .nav-item.active { color: #f59e0b; }
+        .nav-item:active { transform: scale(0.9); }
+        .ptr-indicator {
+            position: fixed;
+            top: -60px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(245, 158, 11, 0.1);
+            transition: top 0.3s ease;
+            z-index: 999;
+        }
+        .ptr-indicator.visible { top: 0; }
+        .ptr-spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(245, 158, 11, 0.2);
+            border-top-color: #f59e0b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="ptrIndicator" class="ptr-indicator">
+        <div class="ptr-spinner"></div>
+        <span class="mr-3 text-amber-400 font-bold">اسحب للتحديث</span>
+    </div>
+
+    <div id="installBanner" class="install-banner hidden mx-4 mt-4 p-4 rounded-2xl">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl">📊</div>
+                <div>
+                    <div class="font-bold">ثبت التطبيق على هاتفك</div>
+                    <div class="text-sm text-blue-200">وصول سريع بدون متصفح</div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="installPWA()" class="px-4 py-2 bg-white text-blue-700 rounded-xl font-bold text-sm">تثبيت</button>
+                <button onclick="dismissInstall()" class="px-3 py-2 text-blue-200 text-xl">×</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="glass-panel mx-4 mt-4 p-4 mb-4 sticky top-0 z-50">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="pulse-dot"></div>
+                <div>
+                    <h1 class="text-xl font-black gradient-text">CryptoGold</h1>
+                    <div class="text-xs text-gray-400">فريم 4H | <span id="lastUpdateTime">--</span></div>
+                </div>
+            </div>
+            <button onclick="refreshData()" id="refreshBtn" class="refresh-btn w-10 h-10 rounded-full flex items-center justify-center">
+                <svg id="refreshIcon" class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="mx-4 mb-4 flex gap-2">
+        <button onclick="switchAsset('btc')" id="btn-btc" class="tab-active flex-1 py-3 rounded-xl font-bold transition-all text-sm">₿ BTC-USD</button>
+        <button onclick="switchAsset('gold')" id="btn-gold" class="flex-1 py-3 rounded-xl font-bold bg-white/5 hover:bg-white/10 transition-all text-sm">🥇 XAU/USD</button>
+    </div>
+
+    <main class="px-4 pb-4 space-y-4" id="mainContent">
+        <div id="signal-banner" class="glass-panel p-4 text-center"></div>
+        <div id="price-cards" class="grid grid-cols-2 gap-3"></div>
+
+        <div class="glass-panel p-3">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-bold text-sm">📈 السعر</h3>
+                <div class="flex gap-1 text-xs">
+                    <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">SMA20</span>
+                    <span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">SMA50</span>
+                </div>
+            </div>
+            <div class="chart-container"><canvas id="priceChart"></canvas></div>
+        </div>
+
+        <div class="glass-panel p-3">
+            <h3 class="font-bold text-sm mb-2">🎯 بولينجر باند</h3>
+            <div class="chart-container-small"><canvas id="bbChart"></canvas></div>
+            <div class="grid grid-cols-3 gap-2 mt-2 text-center text-xs">
+                <div><div class="text-gray-400">علوي</div><div id="bb-upper" class="text-amber-400 font-bold">--</div></div>
+                <div><div class="text-gray-400">متوسط</div><div id="bb-middle" class="font-bold">--</div></div>
+                <div><div class="text-gray-400">سفلي</div><div id="bb-lower" class="text-blue-400 font-bold">--</div></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass-panel p-3">
+                <div class="flex justify-between items-center mb-1"><span class="font-bold text-sm">📊 RSI</span><span id="rsi-value" class="text-lg font-black">--</span></div>
+                <div class="chart-container-small"><canvas id="rsiChart"></canvas></div>
+            </div>
+            <div class="glass-panel p-3">
+                <div class="flex justify-between items-center mb-1"><span class="font-bold text-sm">📉 MACD</span><span id="macd-value" class="text-lg font-black">--</span></div>
+                <div class="chart-container-small"><canvas id="macdChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass-panel p-3">
+                <div class="flex justify-between items-center mb-1"><span class="font-bold text-sm">🎲 Stoch</span><span id="stoch-value" class="text-lg font-black">--</span></div>
+                <div class="chart-container-small"><canvas id="stochChart"></canvas></div>
+            </div>
+            <div class="glass-panel p-3">
+                <div class="flex justify-between items-center mb-1"><span class="font-bold text-sm">⚡ ATR</span><span id="atr-value" class="text-lg font-black">--</span></div>
+                <div class="chart-container-small"><canvas id="atrChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="glass-panel p-3">
+            <h3 class="font-bold text-sm mb-2">📊 الحجم</h3>
+            <div class="chart-container-small"><canvas id="volumeChart"></canvas></div>
+        </div>
+
+        <div class="glass-panel p-4">
+            <h3 class="font-bold text-lg mb-3 gradient-text">🎯 إشارات التداول</h3>
+            <div id="signals-table" class="overflow-x-auto text-sm"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass-panel p-3">
+                <h3 class="font-bold text-sm mb-2 text-green-400">🛡️ دعم</h3>
+                <div id="support-levels" class="space-y-2 text-sm"></div>
+            </div>
+            <div class="glass-panel p-3">
+                <h3 class="font-bold text-sm mb-2 text-red-400">🚧 مقاومة</h3>
+                <div id="resistance-levels" class="space-y-2 text-sm"></div>
+            </div>
+        </div>
+
+        <div class="glass-panel p-4">
+            <h3 class="font-bold text-lg mb-3 gradient-text">📋 خطة التداول</h3>
+            <div id="trading-plan" class="space-y-3"></div>
+        </div>
+    </main>
+
+    <nav class="bottom-nav justify-around">
+        <button onclick="scrollToSection('signal-banner')" class="nav-item active"><div class="text-xl">📊</div><div class="text-xs mt-1">الإشارة</div></button>
+        <button onclick="scrollToSection('priceChart')" class="nav-item"><div class="text-xl">📈</div><div class="text-xs mt-1">الرسوم</div></button>
+        <button onclick="scrollToSection('signals-table')" class="nav-item"><div class="text-xl">🎯</div><div class="text-xs mt-1">التحليل</div></button>
+        <button onclick="scrollToSection('trading-plan')" class="nav-item"><div class="text-xl">📋</div><div class="text-xs mt-1">الخطة</div></button>
+    </nav>
+
+    <footer class="text-center py-6 text-gray-500 text-xs pb-24 md:pb-6">
+        <p>⚠️ لأغراض تعليمية فقط | اسحب للأسفل للتحديث</p>
+    </footer>
+
+    <script>
+        // PWA Install
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBanner').classList.remove('hidden');
+        });
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    document.getElementById('installBanner').classList.add('hidden');
+                });
+            }
+        }
+        function dismissInstall() {
+            document.getElementById('installBanner').classList.add('hidden');
+        }
+
+        // Pull to Refresh
+        let touchStartY = 0;
+        let isPulling = false;
+        document.addEventListener('touchstart', e => {
+            if (window.scrollY === 0) {
+                touchStartY = e.touches[0].clientY;
+                isPulling = true;
+            }
+        }, { passive: true });
+        document.addEventListener('touchmove', e => {
+            if (!isPulling) return;
+            const diff = e.touches[0].clientY - touchStartY;
+            if (diff > 80 && window.scrollY === 0) {
+                document.getElementById('ptrIndicator').classList.add('visible');
+            }
+        }, { passive: true });
+        document.addEventListener('touchend', () => {
+            if (document.getElementById('ptrIndicator').classList.contains('visible')) {
+                refreshData();
+            }
+            document.getElementById('ptrIndicator').classList.remove('visible');
+            isPulling = false;
+        });
+
+        // Data
+        const btcData = ''' + btc_json + ''';
+        const goldData = ''' + gold_json + ''';
+        const btcSignals = ''' + btc_signals_json + ''';
+        const goldSignals = ''' + gold_signals_json + ''';
+        
+        let currentAsset = 'btc';
+        let charts = {};
+
+        function getData() { return currentAsset === 'btc' ? btcData : goldData; }
+        function getSignals() { return currentAsset === 'btc' ? btcSignals : goldSignals; }
+        function formatPrice(price) { return '$' + price.toLocaleString('en-US', {minimumFractionDigits: 2}); }
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+        }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            document.getElementById('lastUpdateTime').textContent = now.toLocaleString('ar-SA', { 
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        function refreshData() {
+            const icon = document.getElementById('refreshIcon');
+            icon.style.animation = 'spin 1s linear infinite';
+            setTimeout(() => {
+                icon.style.animation = '';
+                updateLastUpdateTime();
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-2xl font-bold z-50 shadow-lg';
+                toast.textContent = '✓ تم التحديث';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            }, 1000);
+        }
+
+        function switchAsset(asset) {
+            currentAsset = asset;
+            document.getElementById('btn-btc').className = asset === 'btc' 
+                ? 'tab-active flex-1 py-3 rounded-xl font-bold transition-all text-sm'
+                : 'flex-1 py-3 rounded-xl font-bold bg-white/5 hover:bg-white/10 transition-all text-sm';
+            document.getElementById('btn-gold').className = asset === 'gold'
+                ? 'tab-active flex-1 py-3 rounded-xl font-bold transition-all text-sm'
+                : 'flex-1 py-3 rounded-xl font-bold bg-white/5 hover:bg-white/10 transition-all text-sm';
+            updateAll();
+        }
+
+        function updatePriceCards() {
+            const data = getData();
+            const c = data.current;
+            const changeColor = c.change >= 0 ? 'text-green-400' : 'text-red-400';
+            const changeIcon = c.change >= 0 ? '▲' : '▼';
+            
+            document.getElementById('price-cards').innerHTML = `
+                <div class="metric-card">
+                    <div class="text-gray-400 text-xs mb-1">السعر</div>
+                    <div class="text-xl font-black">${formatPrice(c.price)}</div>
+                    <div class="${changeColor} text-xs">${changeIcon} ${Math.abs(c.change)}%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="text-gray-400 text-xs mb-1">النطاق 4H</div>
+                    <div class="text-sm font-bold text-amber-400">${formatPrice(c.high)}</div>
+                    <div class="text-sm font-bold text-blue-400">${formatPrice(c.low)}</div>
+                </div>
+            `;
+        }
+
+        function updateSignalBanner() {
+            const signals = getSignals();
+            const signalClass = signals.overall === 'STRONG BUY' ? 'signal-strong-buy' :
+                               signals.overall === 'BUY' ? 'signal-buy' :
+                               signals.overall === 'STRONG SELL' ? 'signal-strong-sell' :
+                               signals.overall === 'SELL' ? 'signal-sell' : 'signal-neutral';
+            
+            document.getElementById('signal-banner').innerHTML = `
+                <div class="${signalClass} inline-block px-6 py-3 rounded-xl mb-2">
+                    <div class="text-2xl font-black">${signals.overall}</div>
+                </div>
+                <div class="flex justify-center gap-6 text-sm">
+                    <span class="text-green-400">🟢 ${signals.buy_count} شراء</span>
+                    <span class="text-red-400">🔴 ${signals.sell_count} بيع</span>
+                </div>
+            `;
+        }
+
+        function updateSignalsTable() {
+            const signals = getSignals();
+            const rows = signals.signals.map(s => {
+                const signalClass = s.signal === 'BUY' ? 'text-green-400' : 
+                                   s.signal === 'SELL' ? 'text-red-400' : 'text-amber-400';
+                const strength = s.strength === 'Strong' ? '●' : '○';
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-white/5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-400">${strength}</span>
+                            <span class="font-bold">${s.indicator}</span>
+                        </div>
+                        <div class="${signalClass} font-bold">${s.signal}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('signals-table').innerHTML = rows;
+        }
+
+        function updateLevels() {
+            const data = getData();
+            const candles = data.candles;
+            const recent = candles.slice(-20);
+            const highs = recent.map(c => c.h).sort((a,b) => b-a);
+            const lows = recent.map(c => c.l).sort((a,b) => a-b);
+            
+            const r1 = highs[2], r2 = highs[0], r3 = highs[Math.floor(highs.length*0.1)];
+            const s1 = lows[2], s2 = lows[0], s3 = lows[Math.floor(lows.length*0.1)];
+            
+            document.getElementById('support-levels').innerHTML = `
+                <div class="flex justify-between p-2 rounded bg-green-500/10 border border-green-500/20"><span>S1</span><span class="text-green-400 font-bold">${formatPrice(s1)}</span></div>
+                <div class="flex justify-between p-2 rounded bg-green-500/10 border border-green-500/20"><span>S2</span><span class="text-green-400 font-bold">${formatPrice(s2)}</span></div>
+                <div class="flex justify-between p-2 rounded bg-green-500/10 border border-green-500/20"><span>S3</span><span class="text-green-400 font-bold">${formatPrice(s3)}</span></div>
+            `;
+            
+            document.getElementById('resistance-levels').innerHTML = `
+                <div class="flex justify-between p-2 rounded bg-red-500/10 border border-red-500/20"><span>R1</span><span class="text-red-400 font-bold">${formatPrice(r1)}</span></div>
+                <div class="flex justify-between p-2 rounded bg-red-500/10 border border-red-500/20"><span>R2</span><span class="text-red-400 font-bold">${formatPrice(r2)}</span></div>
+                <div class="flex justify-between p-2 rounded bg-red-500/10 border border-red-500/20"><span>R3</span><span class="text-red-400 font-bold">${formatPrice(r3)}</span></div>
+            `;
+        }
+
+        function updateTradingPlan() {
+            const signals = getSignals();
+            const data = getData();
+            const c = data.current;
+            
+            let entry, stopLoss, takeProfit;
+            
+            if (signals.overall.includes('BUY')) {
+                entry = formatPrice(c.price);
+                stopLoss = formatPrice(c.price - c.atr * 1.5);
+                takeProfit = formatPrice(c.price + c.atr * 3);
+            } else if (signals.overall.includes('SELL')) {
+                entry = formatPrice(c.price);
+                stopLoss = formatPrice(c.price + c.atr * 1.5);
+                takeProfit = formatPrice(c.price - c.atr * 3);
+            } else {
+                entry = 'انتظر';
+                stopLoss = '--';
+                takeProfit = '--';
+            }
+            
+            document.getElementById('trading-plan').innerHTML = `
+                <div class="flex justify-between items-center p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <span class="text-gray-400">🎯 دخول</span><span class="font-black text-lg">${entry}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                    <span class="text-gray-400">🛑 وقف</span><span class="font-black text-lg text-red-400">${stopLoss}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                    <span class="text-gray-400">💰 هدف</span><span class="font-black text-lg text-green-400">${takeProfit}</span>
+                </div>
+            `;
+        }
+
+        function createChart(canvasId, type, datasets, options = {}) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            if (charts[canvasId]) charts[canvasId].destroy();
+            
+            charts[canvasId] = new Chart(ctx, {
+                type: type,
+                data: { labels: getData().candles.map(c => c.x), datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } }
+                    },
+                    ...options
+                }
+            });
+        }
+
+        function updateAll() {
+            const data = getData();
+            
+            updatePriceCards();
+            updateSignalBanner();
+            updateSignalsTable();
+            updateLevels();
+            updateTradingPlan();
+            
+            createChart('priceChart', 'line', [
+                { data: data.candles.map(c => c.c), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, pointRadius: 0, borderWidth: 2 },
+                { data: data.sma20.map(d => d.y), borderColor: 'rgba(245,158,11,0.5)', pointRadius: 0, borderWidth: 1, borderDash: [5,5] },
+                { data: data.sma50.map(d => d.y), borderColor: 'rgba(59,130,246,0.5)', pointRadius: 0, borderWidth: 1, borderDash: [5,5] }
+            ]);
+            
+            createChart('bbChart', 'line', [
+                { data: data.bb_upper.map(d => d.y), borderColor: 'rgba(239,68,68,0.5)', backgroundColor: 'rgba(239,68,68,0.05)', fill: '+1', pointRadius: 0, borderWidth: 1 },
+                { data: data.candles.map(c => c.c), borderColor: '#f59e0b', pointRadius: 0, borderWidth: 2 },
+                { data: data.bb_lower.map(d => d.y), borderColor: 'rgba(16,185,129,0.5)', backgroundColor: 'rgba(16,185,129,0.05)', fill: '-1', pointRadius: 0, borderWidth: 1 }
+            ]);
+            
+            document.getElementById('bb-upper').textContent = formatPrice(data.current.bb_upper);
+            document.getElementById('bb-middle').textContent = formatPrice((data.current.bb_upper + data.current.bb_lower) / 2);
+            document.getElementById('bb-lower').textContent = formatPrice(data.current.bb_lower);
+            
+            createChart('rsiChart', 'line', [
+                { data: data.rsi.map(d => d.y), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, pointRadius: 0, borderWidth: 2 }
+            ], { scales: { y: { min: 0, max: 100 } } });
+            document.getElementById('rsi-value').textContent = data.current.rsi;
+            document.getElementById('rsi-value').className = `text-lg font-black ${data.current.rsi > 70 ? 'text-red-400' : data.current.rsi < 30 ? 'text-green-400' : 'text-blue-400'}`;
+            
+            createChart('macdChart', 'bar', [
+                { data: data.macd_hist.map(d => d.y), backgroundColor: data.macd_hist.map(d => d.y >= 0 ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)'), borderWidth: 0 },
+                { data: data.macd.map(d => d.y), borderColor: '#3b82f6', pointRadius: 0, borderWidth: 1, type: 'line' },
+                { data: data.macd_signal.map(d => d.y), borderColor: '#f97316', pointRadius: 0, borderWidth: 1, type: 'line' }
+            ]);
+            document.getElementById('macd-value').textContent = data.current.macd;
+            document.getElementById('macd-value').className = `text-lg font-black ${data.current.macd > 0 ? 'text-green-400' : 'text-red-400'}`;
+            
+            createChart('stochChart', 'line', [
+                { data: data.stoch_k.map(d => d.y), borderColor: '#3b82f6', pointRadius: 0, borderWidth: 1.5 },
+                { data: data.stoch_d.map(d => d.y), borderColor: '#f97316', pointRadius: 0, borderWidth: 1.5 }
+            ], { scales: { y: { min: 0, max: 100 } } });
+            const lastK = data.stoch_k[data.stoch_k.length - 1]?.y || 0;
+            document.getElementById('stoch-value').textContent = lastK.toFixed(1);
+            
+            createChart('atrChart', 'line', [
+                { data: data.atr.map(d => d.y), borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, pointRadius: 0, borderWidth: 2 }
+            ]);
+            document.getElementById('atr-value').textContent = data.current.atr.toFixed(2);
+            
+            const closes = data.candles.map(c => c.c);
+            const opens = data.candles.map(c => c.o);
+            createChart('volumeChart', 'bar', [
+                { data: data.volume.map(d => d.y), backgroundColor: closes.map((c, i) => c >= opens[i] ? 'rgba(16,185,129,0.5)' : 'rgba(239,68,68,0.5)'), borderWidth: 0 }
+            ]);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAll();
+            updateLastUpdateTime();
+        });
+    </script>
+</body>
+</html>'''
+
+# Save PWA file
+with open('/mnt/agents/output/cryptogold_pwa.html', 'w', encoding='utf-8') as f:
+    f.write(pwa_html)
+
+print("✅ تم إنشاء تطبيق PWA بنجاح!")
+print(f"📁 الملف: /mnt/agents/output/cryptogold_pwa.html")
+print(f"📊 الحجم: {len(pwa_html):,} حرف")
